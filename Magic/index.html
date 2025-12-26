@@ -243,14 +243,27 @@
 
         // 步驟 2: 選擇花色並複製
         function selectSuit(suit) {
-            // 如果還沒選數字，預設為 1 (或是你可以選擇不做任何事)
+            // 如果還沒選數字，若是在開發模式下提示錯誤，否則預設為 1 (Ace)
             if (currentNumber === null) {
-                // currentNumber = 1; // 選項: 預設為 Ace
                 if(isDevMode) { showToast("⚠️ 請先點擊上方 App 選擇數字！"); return; }
             }
 
-            // 組合代碼 (例如: "S-12", "H-1")
-            const finalCode = `${suit}-${currentNumber || 1}`;
+            const safeNum = currentNumber || 1;
+
+            // 定義花色對應數字 (1:黑桃, 2:紅心, 3:梅花, 4:方塊)
+            const suitMap = { 
+                'S': 1, // 黑桃 (Spade)
+                'H': 2, // 紅心 (Heart)
+                'C': 3, // 梅花 (Club)
+                'D': 4  // 方塊 (Diamond)
+            };
+            const suitDigit = suitMap[suit];
+            
+            // 數字補零，變成兩位數 (例如 1 -> "01", 13 -> "13")
+            const numDigit = String(safeNum).padStart(2, '0');
+
+            // 組合純數字代碼 (例如: 黑桃A -> 101, 紅心K -> 213)
+            const finalCode = `${suitDigit}${numDigit}`;
             
             // 執行複製
             copyToClipboard(finalCode);
@@ -296,7 +309,7 @@
             const info = document.getElementById('dev-info');
             if (isDevMode) {
                 info.style.display = 'block';
-                alert("🔴 開發模式\n\n上方藍框：數字 1-13\n下方粉紅框：花色 (點擊觸發複製)\n\n順序：先點數字 -> 再點花色");
+                alert("🔴 開發模式\n\n上方藍框：數字 1-13\n下方粉紅框：花色 (點擊觸發複製)\n\n順序：先點數字 -> 再點花色\n\n代碼範例：\n黑桃A = 101\n紅心K = 213");
             } else {
                 info.style.display = 'none';
                 numBtns.forEach(b => b.innerText = '');
