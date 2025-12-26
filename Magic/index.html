@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Home</title>
+    <style>
+        :root {
+            /* === 區域微調設定 (請依照開發模式調整) === */
+            --status-bar-height: 50px;
+            --gap-height: 25px; 
+            --dock-height: 11.8vh;
+            --mask-color: #000000; 
+        }
+
+        body {
+            margin: 0; padding: 0; background-color: #000; overflow: hidden;
+            -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* 遮罩層設定 */
+        #status-bar-mask {
+            position: fixed; top: 0; left: 0; width: 100%; height: var(--status-bar-height);
+            background-color: var(--mask-color); z-index: 100; pointer-events: none;
+        }
+        #gap-mask {
+            position: fixed; bottom: var(--dock-height); left: 0; width: 100%; height: var(--gap-height);
+            background-color: var(--mask-color); z-index: 55; pointer-events: none;
+        }
+
+        /* Dock 層 */
+        #fixed-dock-container {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: var(--dock-height);
+            z-index: 50; overflow: hidden; pointer-events: none;
+        }
+        #fixed-dock-image {
+            width: 100%; height: 100vh; position: absolute; bottom: 0; left: 0;
+            background-image: url('page1.png'); background-size: cover;
+            background-position: center bottom; background-repeat: no-repeat;
+        }
+
+        /* 滑動容器 */
+        #slider {
+            display: flex; width: 100vw; height: 100vh; overflow-x: auto; overflow-y: hidden;
+            scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+            position: relative; z-index: 1; 
+        }
+        #slider::-webkit-scrollbar { display: none; }
+        .slide {
+            position: relative; flex: 0 0 100vw; height: 100vh; scroll-snap-align: start;
+            background-size: cover; background-position: center top; background-repeat: no-repeat; overflow: hidden;
+        }
+        #page-1 { background-image: url('page1.png'); }
+        #page-2 { background-image: url('page2.png'); }
+        #page-3 { background-image: url('page3.png'); }
+
+        /* === 暗輸入系統 UI === */
+        
+        /* 1. 數字輸入網格 (覆蓋在 Page 1 上方 App 區域) */
+        #number-grid {
+            position: absolute;
+            top: var(--status-bar-height); /* 從狀態列下方開始 */
+            left: 5%; /* 左右留邊距，避免誤觸邊緣 */
+            width: 90%;
+            height: 60%; /* 覆蓋大約前 4-5 排 App */
+            z-index: 80;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); /* 4欄 */
+            grid-template-rows: repeat(5, 1fr);    /* 5列 (預留空間) */
+            gap: 5px;
+        }
+
+        .num-btn {
+            /* background: rgba(0,0,255,0.2); 测试用 */
+            border-radius: 15px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .num-btn:active { background-color: rgba(0,0,0,0.3); } /* 點擊回饋 */
+
+        /* 2. 花色輸入網格 (覆蓋在 Dock 區域) */
+        #suit-grid {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: var(--dock-height);
+            z-index: 90; /* 最高層級，確保能點擊 */
+            display: flex;
+        }
+
+        .suit-btn {
+            flex: 1; /* 平分 4 個區域 */
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .suit-btn:active { background-color: rgba(0,0,0,0.3); }
+
+        /* === 分頁圓點 === */
+        #pagination {
+            position: fixed; bottom: calc(var(--dock-height) + (var(--gap-height) / 2) - 4px);
+            left: 0; width: 100%; display: flex; justify-content: center; gap: 8px;
+            pointer-events: none; z-index: 70; transition: opacity 0.2s;
+        }
+        .dot {
+            width: 8px; height: 8px; background-color: rgba(255, 255, 255, 0.3);
+            border-radius: 50%; transition: background-color 0.2s; backdrop-filter: blur(2px);
+        }
+        .dot.active { background-color: #fff; }
+
+        /* === 開發者模式 === */
+        .dev-mode #number-grid .num-btn {
+            border: 1px solid cyan;
+            color: cyan;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 20px;
+            background: rgba(0, 255, 255, 0.1);
+        }
+        .dev-mode #suit-grid .suit-btn {
+            border: 1px solid magenta;
+            color: magenta;
+            display: flex; justify-content: center; align-items: center; font-weight: bold; font-size: 30px;
+            background: rgba(255, 0, 255, 0.1);
+        }
+        
+        .dev-mode #gap-mask { background-color: rgba(255, 255, 0, 0.3) !important; border: 1px dashed yellow; }
+        .dev-mode #status-bar-mask { background-color: rgba(0, 255, 0, 0.3) !important; }
+        .dev-mode #fixed-dock-container { border-top: 2px solid red; }
+
+        #dev-info { display: none; position: fixed; top: 100px; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #0f0; padding: 10px; text-align: center; font-family: monospace; font-size: 14px; z-index: 200; pointer-events: none; }
+        #secret-switch { position: fixed; bottom: 0; right: 0; width: 60px; height: 60px; z-index: 99; }
+    </style>
+</head>
+<body>
+
+    <div id="status-bar-mask"></div>
+    <div id="gap-mask"></div>
+    <div id="fixed-dock-container">
+        <div id="fixed-dock-image"></div>
+    </div>
+
+    <!-- 花色輸入層 (Dock) - 固定在底部 -->
+    <div id="suit-grid">
+        <div class="suit-btn" onclick="selectSuit('S')"></div> <!-- 黑桃 -->
+        <div class="suit-btn" onclick="selectSuit('H')"></div> <!-- 紅心 -->
+        <div class="suit-btn" onclick="selectSuit('C')"></div> <!-- 梅花 -->
+        <div class="suit-btn" onclick="selectSuit('D')"></div> <!-- 方塊 -->
+    </div>
+
+    <div id="slider">
+        <div id="page-1" class="slide">
+            <!-- 數字輸入層 (覆蓋在 App 上) -->
+            <div id="number-grid">
+                <!-- Row 1 -->
+                <div class="num-btn" onclick="selectNum(1)"></div>
+                <div class="num-btn" onclick="selectNum(2)"></div>
+                <div class="num-btn" onclick="selectNum(3)"></div>
+                <div class="num-btn" onclick="selectNum(4)"></div>
+                <!-- Row 2 -->
+                <div class="num-btn" onclick="selectNum(5)"></div>
+                <div class="num-btn" onclick="selectNum(6)"></div>
+                <div class="num-btn" onclick="selectNum(7)"></div>
+                <div class="num-btn" onclick="selectNum(8)"></div>
+                <!-- Row 3 -->
+                <div class="num-btn" onclick="selectNum(9)"></div>
+                <div class="num-btn" onclick="selectNum(10)"></div>
+                <div class="num-btn" onclick="selectNum(11)"></div>
+                <div class="num-btn" onclick="selectNum(12)"></div>
+                <!-- Row 4 -->
+                <div class="num-btn" onclick="selectNum(13)"></div>
+                <div class="num-btn"></div> <!-- 空位 -->
+                <div class="num-btn"></div> <!-- 空位 -->
+                <div class="num-btn"></div> <!-- 空位 -->
+            </div>
+            
+            <img src="page1.png" style="display:none;" onerror="alert('⚠️ 讀取不到 page1.png')">
+        </div>
+        <div id="page-2" class="slide"></div>
+        <div id="page-3" class="slide"></div>
+    </div>
+
+    <div id="pagination">
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+    </div>
+
+    <div id="secret-switch" onclick="toggleDevMode()"></div>
+    <div id="dev-info"></div>
+
+    <script>
+        // --- 全域變數 ---
+        let currentNumber = null; // 暫存選到的數字
+        
+        // --- UI 連動 ---
+        const slider = document.getElementById('slider');
+        const dockContainer = document.getElementById('fixed-dock-container');
+        const gapMask = document.getElementById('gap-mask');
+        // 同時移動 Suit Grid
+        const suitGrid = document.getElementById('suit-grid');
+        
+        const dots = document.querySelectorAll('.dot');
+        const dotsContainer = document.getElementById('pagination');
+        let viewportWidth = window.innerWidth;
+
+        // --- 滑動邏輯 ---
+        slider.addEventListener('scroll', () => {
+            const x = slider.scrollLeft;
+            const pageIndex = Math.round(x / viewportWidth);
+            
+            dots.forEach((dot, index) => dot.classList.toggle('active', index === pageIndex));
+
+            const page2Start = viewportWidth; 
+            if (x > page2Start) {
+                const offset = x - page2Start;
+                dockContainer.style.transform = `translateX(${-offset}px)`;
+                gapMask.style.transform = `translateX(${-offset}px)`;
+                suitGrid.style.transform = `translateX(${-offset}px)`; // 按鈕也要跟著滑走
+                dotsContainer.style.opacity = offset > viewportWidth * 0.5 ? '0' : '1';
+            } else {
+                dockContainer.style.transform = `translateX(0px)`;
+                gapMask.style.transform = `translateX(0px)`;
+                suitGrid.style.transform = `translateX(0px)`;
+                dotsContainer.style.opacity = '1';
+            }
+        });
+
+        window.addEventListener('resize', () => { viewportWidth = window.innerWidth; });
+
+        // --- 核心輸入邏輯 ---
+
+        // 步驟 1: 選擇數字
+        function selectNum(num) {
+            currentNumber = num;
+            console.log("暫存數字: " + num);
+            // 回饋：短震動 1 下
+            if (navigator.vibrate) navigator.vibrate(20);
+            
+            if(isDevMode) showToast(`已選擇數字: ${num} (請選花色)`);
+        }
+
+        // 步驟 2: 選擇花色並複製
+        function selectSuit(suit) {
+            // 如果還沒選數字，預設為 1 (或是你可以選擇不做任何事)
+            if (currentNumber === null) {
+                // currentNumber = 1; // 選項: 預設為 Ace
+                if(isDevMode) { showToast("⚠️ 請先點擊上方 App 選擇數字！"); return; }
+            }
+
+            // 組合代碼 (例如: "S-12", "H-1")
+            const finalCode = `${suit}-${currentNumber || 1}`;
+            
+            // 執行複製
+            copyToClipboard(finalCode);
+            
+            console.log("複製成功: " + finalCode);
+            
+            // 回饋：短震動 2 下 (表示完成)
+            if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+
+            if(isDevMode) showToast(`📋 已複製: ${finalCode}`);
+            
+            // 重置數字，避免誤觸
+            currentNumber = null;
+        }
+
+        function copyToClipboard(text) {
+            const el = document.createElement('textarea');
+            el.value = text;
+            el.setAttribute('readonly', '');
+            el.style.position = 'absolute';
+            el.style.left = '-9999px';
+            document.body.appendChild(el);
+            el.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(el);
+        }
+
+        // --- 開發者模式 ---
+        let isDevMode = false;
+        function toggleDevMode() {
+            isDevMode = !isDevMode;
+            document.body.classList.toggle('dev-mode');
+            
+            // 在開發模式下顯示文字標籤
+            const numBtns = document.querySelectorAll('.num-btn');
+            numBtns.forEach((btn, idx) => {
+                if (idx < 13) btn.innerText = idx + 1;
+            });
+            const suitBtns = document.querySelectorAll('.suit-btn');
+            const suits = ['♠️', '♥️', '♣️', '♦️'];
+            suitBtns.forEach((btn, idx) => btn.innerText = suits[idx]);
+
+            const info = document.getElementById('dev-info');
+            if (isDevMode) {
+                info.style.display = 'block';
+                alert("🔴 開發模式\n\n上方藍框：數字 1-13\n下方粉紅框：花色 (點擊觸發複製)\n\n順序：先點數字 -> 再點花色");
+            } else {
+                info.style.display = 'none';
+                numBtns.forEach(b => b.innerText = '');
+                suitBtns.forEach(b => b.innerText = '');
+            }
+        }
+        
+        // 簡單的提示視窗 (僅開發模式用)
+        function showToast(msg) {
+            const info = document.getElementById('dev-info');
+            info.innerText = msg;
+            info.style.display = 'block';
+            setTimeout(() => { if(isDevMode) info.innerText = "開發模式待機中..."; }, 2000);
+        }
+
+        document.body.addEventListener('touchmove', function(e) {}, { passive: false });
+    </script>
+</body>
+</html>
