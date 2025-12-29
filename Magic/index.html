@@ -9,8 +9,8 @@
     <style>
         :root {
             /* === 區域微調設定 (請依照開發模式調整) === */
-            --status-bar-height: 40px;
-            --gap-height: 50px; 
+            --status-bar-height: 50px;
+            --gap-height: 40px; 
             --dock-height: 13vh;
             --mask-color: #000000; 
         }
@@ -208,18 +208,9 @@
             // 震動回饋
             if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
 
-            if(isDevMode) showToast(`📋 已複製: ${finalCode} (即將關閉)`);
+            if(isDevMode) showToast(`📋 已複製: ${finalCode}`);
             
-            // === 關鍵功能：自動關閉/黑屏 ===
-            setTimeout(() => {
-                // 1. 嘗試關閉視窗 (對某些環境有效)
-                try { window.close(); } catch(e){}
-                
-                // 2. 如果關不掉，直接讓畫面全黑 (模擬鎖定/當機)
-                document.body.innerHTML = "";
-                document.body.style.backgroundColor = "black";
-            }, 500); // 延遲 0.5 秒，讓震動跑完，也讓觀眾看清楚你最後點了什麼
-            
+            // 重置數字，但 **不** 清空畫面
             currentNumber = null;
         }
 
@@ -248,7 +239,7 @@
             const info = document.getElementById('dev-info');
             if (isDevMode) {
                 info.style.display = 'block';
-                alert("🔴 開發模式\n\n上方藍框：數字 1-13\n下方粉紅框：花色 (點擊後會自動黑屏)\n\n順序：先點數字 -> 再點花色");
+                alert("🔴 開發模式\n\n上方藍框：數字 1-13\n下方粉紅框：花色\n\n順序：先點數字 -> 再點花色");
             } else {
                 info.style.display = 'none';
                 numBtns.forEach(b => b.innerText = '');
@@ -267,5 +258,3 @@
     </script>
 </body>
 </html>
-
-
